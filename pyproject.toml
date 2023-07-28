@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "print-mech-analyser"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "print_mech_analyser"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pyserial = "^3.5"
+numpy = "^1.25.1"
+opencv-python = "^4.8.0.74"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.0.280"
+black = "^23.7.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

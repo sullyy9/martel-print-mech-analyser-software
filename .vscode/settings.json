@@ -1,0 +1,18 @@
+{
+    // Specified in the Pep8 standard.
+    "editor.rulers": [
+        88
+    ],
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true,
+    "python.linting.pylintArgs": [
+        "--generated-members"
+    ],
+    "python.formatting.provider": "black",
+    "python.analysis.packageIndexDepths": [
+        {
+            "name": "simplepyble",
+            "depth": 3
+        },
+    ]
+}
