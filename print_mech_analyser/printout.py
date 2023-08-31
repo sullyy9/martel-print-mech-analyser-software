@@ -74,6 +74,10 @@ class Printout(np.lib.mixins.NDArrayOperatorsMixin):
 
         return cls(image.astype(uint8))
 
+    @classmethod
+    def blank(cls, width: int, length: int) -> Self:
+        return Printout(np.zeros((length, width), dtype=uint8))
+
     @property
     def length(self) -> int:
         return self._img.shape[0]
