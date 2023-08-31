@@ -98,12 +98,12 @@ class Application:
         )
         if filename is not None and self._analyser is not None:
             self._analyser.get_printout().save(Path(filename))
-    
+
     def load_printout(self) -> None:
         filename = filedialog.askopenfilename(
             title="Load printout", filetypes=[("PNG", ".png")], defaultextension=".*"
         )
-        if filename is not None:
+        if filename is not None and len(filename) > 0:
             printout = Printout.from_file(Path(filename))
             self._display.update_printout(printout)
 
