@@ -34,6 +34,7 @@ class Application:
         self._menubar.add_cascade(label="Select Port", menu=self._portmenu)
         self._menubar.add_command(label="Save", command=self.save_printout)
         self._menubar.add_command(label="Load", command=self.load_printout)
+        self._menubar.add_command(label="Clear", command=self.clear_printout)
 
         self._root.bind(
             "<<port-selected>>",
@@ -107,6 +108,9 @@ class Application:
             printout = Printout.from_file(Path(filename))
             self._display.update_printout(printout)
 
+    def clear_printout(self) -> None:
+        self._display.clear_printout()
+
 
 class PortMenu(Menu):
     def __init__(self, master=None, **kw) -> None:
@@ -162,6 +166,13 @@ class PrintoutDisplay(Frame):
         data = f"P5 {width} {height} 255 ".encode() + new_image.tobytes()
         self._image = PhotoImage(width=width, height=height, data=data, format="PPM")
         self._canvas.itemconfig(self.printout_container, image=self._image)
+        self._canvas.config(scrollregion=self._canvas.bbox("all"))
+
+    def clear_printout(self) -> None:
+        self._canvas.delete("all")
+        self.printout_container = self._canvas.create_image(
+            0, 0, anchor="nw", image=None
+        )
         self._canvas.config(scrollregion=self._canvas.bbox("all"))
 
     def mouse_scroll(self, event: Event):
