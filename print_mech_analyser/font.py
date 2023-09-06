@@ -2,6 +2,7 @@ import math
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Final
 
 import cv2 as cv
 import numpy as np
@@ -9,12 +10,21 @@ from numpy import ndarray, uint8
 from numpy.typing import NDArray
 
 
+@dataclass
+class CharMatch:
+    char: str
+    match: float
+
+
 class Font:
+    MATCH_THRESHOLD: Final[float] = 0.01
+
     def __init__(self, filepath: Path):
         self.name: str
         self.glyph_width: int
         self.glyph_height: int
         self._glyphs: dict[int, ndarray] = {}
+        self._glyph_contours: dict[int, Any] = {}
 
         with open(filepath, "r") as file:
             data = json.load(file)
@@ -26,12 +36,16 @@ class Font:
 
             glyphs: dict[str, list[int]] = data["glyphs"]
             for cp, glyph_data in glyphs.items():
+                code_point = int(cp, base=16)
                 # Turn the 1 bpp 1D array into 8bpp 2D.
                 data = np.array(glyph_data, dtype=uint8).reshape((-1, row_bytes))
                 data = np.unpackbits(data, axis=1)
                 data = np.where(data != 0, 255, 0).astype(uint8)
 
-                self._glyphs[int(cp, base=16)] = data
+                self._glyphs[code_point] = data
+                self._glyph_contours[code_point], _ = cv.findContours(
+                    data, cv.RETR_LIST, cv.CHAIN_APPROX_NONE
+                )
 
     def show_char(self, code_point: int) -> None:
         cv.imshow(f"Character: {code_point}", self._glyphs[code_point])
@@ -58,34 +72,44 @@ class Font:
         cv.imshow("Font", np.vstack(rows, dtype=uint8))
         cv.waitKey()
 
-    def parse_image(self, image: ndarray) -> str:
-        # image = np.where(image == 0, 255, 0).astype(uint8)
-        best = (0, 100)
-        for code, glyph in self._glyphs.items():
-            glyph = np.where(glyph == 1, 255, 0).astype(uint8)
+    def parse_image(self, image: NDArray[uint8]) -> list[CharMatch]:
+        # Pad the image if nescessary
+        width = image.shape[1]
+        height = image.shape[0]
 
-            glyph_cont, _ = cv.findContours(glyph, 2, 1)
-            img_cont, _ = cv.findContours(image, 2, 1)
+        xpad = self.glyph_width - width if width < self.glyph_width else 0
+        ypad = self.glyph_height - height if height < self.glyph_height else 0
 
-            try:
-                c1 = glyph_cont[0]
-                c2 = img_cont[0]
-                match = cv.matchShapes(c1, c2, 1, 0.0)
-                if match < best[1]:
-                    best = (code, match)
-                # print(f'{chr(code)}: {match}')
-            except:
-                pass
+        image = np.pad(
+            image,
+            pad_width=(
+                (math.floor(ypad / 2), math.ceil(ypad / 2)),
+                (math.floor(xpad / 2), math.ceil(xpad / 2)),
+            ),
+        )
 
-        # cv.imshow('img', image)
-        # cv.imshow('best match', self._glyphs[best[0]])
-        # cv.waitKey()
-        # print(f'Best match: {chr(best[0])} - {best[1]}')
-        return chr(best[0])
+        image_contours, _ = cv.findContours(image, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
 
+        # If no contours then it's probably whitespace.
+        # TODO return list of possible whitespace chars instead.
+        if len(image_contours) == 0:
+            spaces = math.floor(image.shape[1] / self.glyph_width)
+            return [CharMatch("".join([" " for _ in range(spaces)]), 0.0)]
 
-@dataclass
-class ParsedCharacter:
-    image: NDArray[uint8]
-    matches: list[str]
-    match_values: list[float]
+        matches: list[CharMatch] = []
+        for code, glyph_contours in self._glyph_contours.items():
+            # If there are no contours then it's a blank image / glyph.
+            if len(glyph_contours) != len(image_contours):
+                continue
+
+            match_sum = 0
+            for image_contour, glyph_contour in zip(image_contours, glyph_contours):
+                match_sum += cv.matchShapes(
+                    image_contour, glyph_contour, cv.CONTOURS_MATCH_I1, 0.0
+                )
+            match = match_sum / len(glyph_contours)
+
+            if match < self.MATCH_THRESHOLD:
+                matches.append(CharMatch(chr(code), match))
+
+        return matches
