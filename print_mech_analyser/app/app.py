@@ -122,4 +122,3 @@ class App:
 
     def clear_printout(self) -> None:
         self._display.clear()
-        self._display.clear()

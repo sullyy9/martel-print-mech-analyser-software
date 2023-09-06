@@ -1,5 +1,5 @@
-from tkinter import Canvas, PhotoImage, Frame, Scrollbar, Event, Text
 import tkinter
+from tkinter import Canvas, PhotoImage, Frame, Scrollbar, Event, Text
 from typing import Final
 from idlelib.tooltip import Hovertip
 
@@ -112,7 +112,7 @@ class TextDisplay(Frame):
         self._text_box.insert(tkinter.END, "\n")
 
     def clear(self) -> None:
-        self._text_box.delete("all")
+        self._text_box.delete("1.0", tkinter.END)
         self._text.clear()
 
     def hover_show(self, index: int) -> None:
