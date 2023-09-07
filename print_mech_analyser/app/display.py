@@ -141,6 +141,6 @@ class ToolTip(Hovertip):
         if self.tipwindow is None:
             return
 
-        x = self.anchor_widget.winfo_pointerx()
-        y = self.anchor_widget.winfo_pointery()
+        x = self.anchor_widget.winfo_pointerx() + 1
+        y = self.anchor_widget.winfo_pointery() - 1
         self.tipwindow.wm_geometry(f"+{x}+{y}")
