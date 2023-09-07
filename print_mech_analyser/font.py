@@ -13,6 +13,7 @@ from numpy.typing import NDArray
 @dataclass
 class CharMatch:
     char: str
+    code_point: int
     match: float
 
 
@@ -94,7 +95,13 @@ class Font:
         # TODO return list of possible whitespace chars instead.
         if len(image_contours) == 0:
             spaces = math.floor(image.shape[1] / self.glyph_width)
-            return [CharMatch("".join([" " for _ in range(spaces)]), 0.0)]
+            return [
+                CharMatch(
+                    char="".join([" " for _ in range(spaces)]),
+                    code_point=0x20,
+                    match=0.0,
+                )
+            ]
 
         matches: list[CharMatch] = []
         for code, glyph_contours in self._glyph_contours.items():
@@ -110,6 +117,6 @@ class Font:
             match = match_sum / len(glyph_contours)
 
             if match < self.MATCH_THRESHOLD:
-                matches.append(CharMatch(chr(code), match))
+                matches.append(CharMatch(char=chr(code), code_point=code, match=match))
 
         return matches
