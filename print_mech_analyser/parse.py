@@ -63,8 +63,11 @@ def split_line_characters(line: NDArray[uint8], font: Font) -> list[NDArray[uint
     return chunks
 
 
-def parse_char(char: NDArray[uint8], font: Font) -> list[CharMatch] | None:
-    matches = font.parse_image(char)
+def parse_char(char: NDArray[uint8], fonts: list[Font]) -> list[CharMatch] | None:
+    matches: list[CharMatch] = []
+    for font in fonts:
+        matches.extend(font.parse_image(char))
+
     if len(matches) == 0:
         return None
 
@@ -72,13 +75,13 @@ def parse_char(char: NDArray[uint8], font: Font) -> list[CharMatch] | None:
     return matches
 
 
-def parse_line(line: NDArray[uint8], font: Font) -> list[list[CharMatch] | None]:
-    chars = split_line_characters(line, font)
-    return [parse_char(char, font) for char in chars]
+def parse_line(line: NDArray[uint8], fonts: list[Font]) -> list[list[CharMatch] | None]:
+    chars = split_line_characters(line, fonts[0])
+    return [parse_char(char, fonts) for char in chars]
 
 
 def parse_printout(
-    printout: Printout, font: Font
+    printout: Printout, fonts: list[Font]
 ) -> list[list[list[CharMatch] | None]]:
-    lines = split_lines(printout, font)
-    return [parse_line(line, font) for line in lines]
+    lines = split_lines(printout, fonts[0])
+    return [parse_line(line, fonts) for line in lines]

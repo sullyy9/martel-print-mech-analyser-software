@@ -2,7 +2,7 @@ import math
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, Self
 
 import cv2 as cv
 import numpy as np
@@ -13,6 +13,7 @@ from numpy.typing import NDArray
 @dataclass
 class CharMatch:
     char: str
+    font: str
     code_point: int
     match: float
 
@@ -20,33 +21,78 @@ class CharMatch:
 class Font:
     MATCH_THRESHOLD: Final[float] = 0.01
 
-    def __init__(self, filepath: Path):
-        self.name: str
-        self.glyph_width: int
-        self.glyph_height: int
-        self._glyphs: dict[int, ndarray] = {}
+    def __init__(
+        self,
+        name: str,
+        glyph_width: int,
+        glyph_height: int,
+        glyphs: dict[int, NDArray[uint8]],
+    ) -> None:
+        self.name: str = name
+        self.glyph_width: int = glyph_width
+        self.glyph_height: int = glyph_height
+        self._glyphs: dict[int, ndarray] = glyphs
         self._glyph_contours: dict[int, Any] = {}
 
+        for cp, glyph in glyphs.items():
+            self._glyph_contours[cp], _ = cv.findContours(
+                glyph, cv.RETR_LIST, cv.CHAIN_APPROX_NONE
+            )
+
+    @classmethod
+    def from_json(cls, filepath: Path):
+        json_data: dict = {}
         with open(filepath, "r") as file:
-            data = json.load(file)
-            self.name = data["name"]
-            self.glyph_width = data["glyph_width"]
-            self.glyph_height = data["glyph_height"]
+            json_data = json.load(file)
 
-            row_bytes = math.ceil(self.glyph_width / 8.0)
+        name = json_data["name"]
+        glyph_width = json_data["glyph_width"]
+        glyph_height = json_data["glyph_height"]
 
-            glyphs: dict[str, list[int]] = data["glyphs"]
-            for cp, glyph_data in glyphs.items():
-                code_point = int(cp, base=16)
-                # Turn the 1 bpp 1D array into 8bpp 2D.
-                data = np.array(glyph_data, dtype=uint8).reshape((-1, row_bytes))
-                data = np.unpackbits(data, axis=1)
-                data = np.where(data != 0, 255, 0).astype(uint8)
+        row_bytes = math.ceil(glyph_width / 8.0)
 
-                self._glyphs[code_point] = data
-                self._glyph_contours[code_point], _ = cv.findContours(
-                    data, cv.RETR_LIST, cv.CHAIN_APPROX_NONE
-                )
+        json_glyphs: dict[str, list[int]] = json_data["glyphs"]
+        glyphs: dict[int, NDArray[uint8]] = {}
+
+        for cp, glyph_data in json_glyphs.items():
+            code_point = int(cp, base=16)
+            # Turn the 1 bpp 1D array into 8bpp 2D.
+            data = np.array(glyph_data, dtype=uint8).reshape((-1, row_bytes))
+            data = np.unpackbits(data, axis=1)
+            data = np.where(data != 0, 255, 0).astype(uint8)
+
+            glyphs[code_point] = data
+
+        return cls(
+            name=name,
+            glyph_width=glyph_width,
+            glyph_height=glyph_height,
+            glyphs=glyphs,
+        )
+
+    def into_bold(self) -> Self:
+        bold_glyphs: dict[int, ndarray] = {}
+
+        for cp, glyph in self._glyphs.items():
+            glyph = np.where(glyph != 0, 1, 0).astype(uint8)
+            glyph = np.packbits(glyph, axis=1)
+
+            # Apply the bold algorithm, taken from the printer firmware.
+            rows = glyph.shape[0]
+            for r in range(0, rows):
+                glyph[r, 1] |= glyph[r, 1] >> 1 | glyph[r, 0] << 7
+                glyph[r, 0] |= glyph[r, 0] >> 1
+
+            glyph = np.unpackbits(glyph, axis=1)
+            glyph = np.where(glyph != 0, 255, 0).astype(uint8)
+            bold_glyphs[cp] = glyph
+
+        return Font(
+            name=self.name + "-bold",
+            glyph_width=self.glyph_width,
+            glyph_height=self.glyph_height,
+            glyphs=bold_glyphs,
+        )
 
     def show_char(self, code_point: int) -> None:
         cv.imshow(f"Character: {code_point}", self._glyphs[code_point])
@@ -98,6 +144,7 @@ class Font:
             return [
                 CharMatch(
                     char="".join([" " for _ in range(spaces)]),
+                    font=self.name,
                     code_point=0x20,
                     match=0.0,
                 )
@@ -117,6 +164,13 @@ class Font:
             match = match_sum / len(glyph_contours)
 
             if match < self.MATCH_THRESHOLD:
-                matches.append(CharMatch(char=chr(code), code_point=code, match=match))
+                matches.append(
+                    CharMatch(
+                        char=chr(code),
+                        font=self.name,
+                        code_point=code,
+                        match=match,
+                    )
+                )
 
         return matches

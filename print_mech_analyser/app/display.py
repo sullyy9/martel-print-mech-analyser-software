@@ -122,6 +122,7 @@ class TextDisplay(Frame):
         for match in self._text[index][:match_count]:
             text += f"char: {match.char} | "
             text += f"code: U+{match.code_point:04X}  | "
+            text += f"font: {match.font} | "
             text += f"rating: {match.match}\n"
 
         self._tooltip.text = text

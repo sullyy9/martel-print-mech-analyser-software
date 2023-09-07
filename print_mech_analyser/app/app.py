@@ -26,7 +26,9 @@ class App:
         )
 
         self._analyser: MechAnalyser | None = None
-        self._font: Font = Font(Path("./fonts/Arial16.json"))
+
+        arial16 = Font.from_json(Path("./fonts/Arial16.json"))
+        self._fonts: list[Font] = [arial16, arial16.into_bold()]
 
         self._root.title("Print Mech Analyser")
 
@@ -109,7 +111,7 @@ class App:
             printout = Printout.from_file(Path(filename))
             self._display.update(printout)
 
-            for line in parse.parse_printout(printout, self._font):
+            for line in parse.parse_printout(printout, self._fonts):
                 line_text: str = ""
                 for char in line:
                     if char is not None:
