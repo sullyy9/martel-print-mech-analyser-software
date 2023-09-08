@@ -9,6 +9,9 @@ from numpy.typing import NDArray
 
 from print_mech_analyser.font import CharMatch
 from print_mech_analyser.printout import Printout
+from print_mech_analyser.font import Font
+from print_mech_analyser import parse
+
 
 def ndarray_to_photo_image(array: NDArray[uint8]) -> PhotoImage:
     height, width = array.shape
@@ -25,6 +28,9 @@ class Display(Frame):
         self._text = TextDisplay(self)
         self._scroll: Final = Scrollbar(self, orient="vertical", width=16)
 
+        self._print_unprocessed: Printout = Printout.blank(384, 0)
+        self._fonts: list[Font] = []
+
         self._print.grid(row=0, column=0, sticky="nsew")
         self._text.grid(row=0, column=1, sticky="nsew")
         self._scroll.grid(row=0, column=2, sticky="nsew")
@@ -40,7 +46,28 @@ class Display(Frame):
         self.bind_class(str(self._print._canvas), "<MouseWheel>", self.scroll)
         self.bind_class(str(self._text._text_box), "<MouseWheel>", self.scroll)
 
+    def set_fonts(self, fonts: list[Font]) -> None:
+        self._fonts = fonts
+
     def append(self, printout: Printout) -> None:
+        self._update(printout)
+
+    def set(self, printout: Printout) -> None:
+        self.clear()
+        self._update(printout)
+
+    def clear(self) -> None:
+        self._print.clear()
+        self._text.clear()
+
+    def get_printout(self) -> Printout | None:
+        return self._print.get_printout()
+
+    def scroll(self, event: Event):
+        self._print.scroll(event)
+        self._text.scroll(event)
+
+    def _update(self, printout: Printout) -> None:
         self._print.append(printout)
 
         self._print_unprocessed.extend(printout)
@@ -57,20 +84,6 @@ class Display(Frame):
                 if char is not None:
                     self._text.append_character(char, 16)
             self._text.new_line()
-
-    def set(self, printout: Printout) -> None:
-        self._print.set(printout)
-
-    def clear(self) -> None:
-        self._print.clear()
-        self._text.clear()
-
-    def get_printout(self) -> Printout | None:
-        return self._print.get_printout()
-
-    def scroll(self, event: Event):
-        self._print.scroll(event)
-        self._text.scroll(event)
 
 
 class PrintDisplay(Frame):

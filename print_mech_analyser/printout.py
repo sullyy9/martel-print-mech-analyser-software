@@ -78,6 +78,9 @@ class Printout(np.lib.mixins.NDArrayOperatorsMixin):
     def blank(cls, width: int, length: int) -> Self:
         return Printout(np.zeros((length, width), dtype=uint8))
 
+    def extend(self, printout: Self) -> None:
+        self._img = np.vstack((self._img, printout), dtype=uint8)
+
     @property
     def length(self) -> int:
         return self._img.shape[0]
@@ -88,7 +91,7 @@ class Printout(np.lib.mixins.NDArrayOperatorsMixin):
 
     @property
     def size(self) -> tuple[int, int]:
-        return self._img.shape[:2]
+        return (self._img.shape[0], self._img.shape[1])
 
     def save(self, path: Path) -> None:
         cv.imwrite(str(path.absolute()), np.array(self))

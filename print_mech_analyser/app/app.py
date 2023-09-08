@@ -27,9 +27,6 @@ class App:
 
         self._analyser: MechAnalyser | None = None
 
-        arial16 = Font.from_json(Path("./fonts/Arial16.json"))
-        self._fonts: list[Font] = [arial16, arial16.into_bold()]
-
         self._root.title("Print Mech Analyser")
 
         # Setup the menu bar.
@@ -81,6 +78,10 @@ class App:
 
         self.update_printout()
 
+        arial16 = Font.from_json(Path("./fonts/Arial16.json"))
+        fonts: list[Font] = [arial16, arial16.into_bold()]
+        self._display.set_fonts(fonts)
+
     def mainloop(self) -> None:
         self._root.mainloop()
 
@@ -92,9 +93,8 @@ class App:
 
         if self._analyser is not None:
             self._analyser.process()
-            # printout = self._analyser.get_printout()
-            # self._display.set(printout)
             printout = self._analyser.take_printout()
+
             if printout is not None:
                 self._display.append(printout)
 
@@ -113,15 +113,7 @@ class App:
         )
 
         if filename is not None and len(filename) > 0:
-            printout = Printout.from_file(Path(filename))
-            self._display.set(printout)
-
-            for line in parse.parse_printout(printout, self._fonts):
-                for char in line:
-                    if char is not None:
-                        self._display._text.append_character(char, 16)
-
-                self._display._text.new_line()
+            self._display.set(Printout.from_file(Path(filename)))
 
     def clear_printout(self) -> None:
         self._display.clear()
