@@ -4,16 +4,24 @@ from typing import Final
 from idlelib.tooltip import Hovertip
 
 import numpy as np
+from numpy import uint8
+from numpy.typing import NDArray
 
 from print_mech_analyser.font import CharMatch
 from print_mech_analyser.printout import Printout
+
+def ndarray_to_photo_image(array: NDArray[uint8]) -> PhotoImage:
+    height, width = array.shape
+    data = f"P5 {width} {height} 255 ".encode() + array.tobytes()
+
+    return PhotoImage(width=width, height=height, data=data, format="PPM")
 
 
 class Display(Frame):
     def __init__(self, master=None, **kw):
         super().__init__(master=master, **kw)
 
-        self._print = PrintDisplay(self)
+        self._print = PrintDisplay(self, borderwidth=5, relief=tkinter.GROOVE)
         self._text = TextDisplay(self)
         self._scroll: Final = Scrollbar(self, orient="vertical", width=16)
 
@@ -32,12 +40,33 @@ class Display(Frame):
         self.bind_class(str(self._print._canvas), "<MouseWheel>", self.scroll)
         self.bind_class(str(self._text._text_box), "<MouseWheel>", self.scroll)
 
-    def update(self, printout: Printout) -> None:
-        self._print.update(printout)
+    def append(self, printout: Printout) -> None:
+        self._print.append(printout)
+
+        self._print_unprocessed.extend(printout)
+        lines = parse.split_lines(np.array(self._print_unprocessed), self._fonts[0])
+
+        if len(lines) < 2:
+            return
+
+        matches = [parse.parse_line(line, self._fonts) for line in lines[:-1]]
+        self._print_unprocessed = Printout(lines[-1])
+
+        for line in matches:
+            for char in line:
+                if char is not None:
+                    self._text.append_character(char, 16)
+            self._text.new_line()
+
+    def set(self, printout: Printout) -> None:
+        self._print.set(printout)
 
     def clear(self) -> None:
         self._print.clear()
         self._text.clear()
+
+    def get_printout(self) -> Printout | None:
+        return self._print.get_printout()
 
     def scroll(self, event: Event):
         self._print.scroll(event)
@@ -49,29 +78,44 @@ class PrintDisplay(Frame):
         super().__init__(master=master, **kw)
 
         self._canvas: Final = Canvas(self, highlightthickness=0)
-        self._image: PhotoImage | None = None
+        self._image: NDArray[uint8] | None = None
+        self._photo_image: PhotoImage | None = None
         self._canvas_image = self._canvas.create_image(0, 0, anchor="nw", image=None)
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self._canvas.grid(row=0, column=0, sticky="nsew")
+        self._canvas.grid(row=0, column=0, sticky="ns")
 
-    def update(self, printout: Printout) -> None:
-        new_image = np.array(printout)
+    def append(self, printout: Printout) -> None:
+        if self._image is None:
+            self.set(printout)
+            return
 
-        height, width = new_image.shape
-        data = f"P5 {width} {height} 255 ".encode() + new_image.tobytes()
+        self._image = np.vstack((self._image, printout))
 
-        self._image = PhotoImage(width=width, height=height, data=data, format="PPM")
+        self._photo_image = ndarray_to_photo_image(self._image)
 
-        self._canvas.itemconfig(self._canvas_image, image=self._image)
+        self._canvas.itemconfig(self._canvas_image, image=self._photo_image)
+        self._canvas.config(scrollregion=self._canvas.bbox("all"))
+
+    def set(self, printout: Printout) -> None:
+        self._image = np.array(printout, dtype=uint8)
+
+        self._photo_image = ndarray_to_photo_image(self._image)
+
+        self._canvas.itemconfig(self._canvas_image, image=self._photo_image)
         self._canvas.config(scrollregion=self._canvas.bbox("all"))
 
     def clear(self) -> None:
         self._canvas.delete("all")
+        self._image = None
+        self._photo_image = None
         self._canvas_image = self._canvas.create_image(0, 0, anchor="nw", image=None)
         self._canvas.config(scrollregion=self._canvas.bbox("all"))
+
+    def get_printout(self) -> Printout | None:
+        return Printout(self._image) if self._image is not None else None
 
     def set_scrollbar(self, scrollbar: Scrollbar) -> None:
         self._canvas.config(yscrollcommand=scrollbar.set)

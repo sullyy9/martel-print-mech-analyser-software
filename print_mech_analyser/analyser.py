@@ -102,9 +102,16 @@ class PrintoutBuilder:
             self._image[self._line], line, dtype=uint8
         )
 
-    def get_image(self) -> NDArray[uint8]:
-        image = np.vstack((self._image), dtype=uint8)
+    def get_image(self) -> NDArray[uint8] | None:
+        if len(self._image) <= 1:
+            return None
+
+        image = np.vstack((self._image[:-1]), dtype=uint8)
         return np.multiply(image, 255, dtype=uint8)
+
+    def clear(self) -> None:
+        self._image: list[NDArray[uint8]] = [self._image[-1]]
+        self._line: int = 0
 
 
 class MechAnalyser:
@@ -169,5 +176,11 @@ class MechAnalyser:
                 line = np.unpackbits(line, bitorder="big")
                 self._printout.burn_line(line)
 
-    def get_printout(self) -> Printout:
-        return Printout(self._printout.get_image())
+    def get_printout(self) -> Printout | None:
+        image = self._printout.get_image()
+        return Printout(image) if image is not None else None
+
+    def take_printout(self) -> Printout | None:
+        image = self._printout.get_image()
+        self._printout.clear()
+        return Printout(image) if image is not None else None

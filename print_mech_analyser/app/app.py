@@ -20,7 +20,7 @@ class App:
     def __init__(self) -> None:
         self._root: Final = Tk()
         self._menubar: Final = Menu(self._root)
-        self._display: Final = Display(self._root, background="bisque")
+        self._display: Final = Display(self._root)
         self._controls: Final = Controls(
             self._root, borderwidth=5, relief=tkinter.GROOVE
         )
@@ -92,15 +92,20 @@ class App:
 
         if self._analyser is not None:
             self._analyser.process()
-            printout = self._analyser.get_printout()
-            self._display.update(printout)
+            # printout = self._analyser.get_printout()
+            # self._display.set(printout)
+            printout = self._analyser.take_printout()
+            if printout is not None:
+                self._display.append(printout)
 
     def save_printout(self) -> None:
         filename = filedialog.asksaveasfilename(
             title="Save printout", filetypes=[("PNG", ".png")], defaultextension=".*"
         )
-        if filename is not None and self._analyser is not None:
-            self._analyser.get_printout().save(Path(filename))
+        if filename is not None:
+            printout = self._display.get_printout()
+            if printout is not None:
+                printout.save(Path(filename))
 
     def load_printout(self) -> None:
         filename = filedialog.askopenfilename(
@@ -109,17 +114,13 @@ class App:
 
         if filename is not None and len(filename) > 0:
             printout = Printout.from_file(Path(filename))
-            self._display.update(printout)
+            self._display.set(printout)
 
             for line in parse.parse_printout(printout, self._fonts):
-                line_text: str = ""
                 for char in line:
                     if char is not None:
                         self._display._text.append_character(char, 16)
 
-                    line_text += char[0].char if char else "�"
-
-                line_text += "\n"
                 self._display._text.new_line()
 
     def clear_printout(self) -> None:
