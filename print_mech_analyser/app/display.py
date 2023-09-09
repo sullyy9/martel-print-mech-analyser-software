@@ -42,6 +42,7 @@ class Display(Frame):
 
         self._print.set_scrollbar(self._scroll)
         self._text.set_scrollbar(self._scroll)
+        self._scroll.config(command=self.yview)
 
         self.bind_class(str(self._print._canvas), "<MouseWheel>", self.scroll)
         self.bind_class(str(self._text._text_box), "<MouseWheel>", self.scroll)
@@ -62,6 +63,10 @@ class Display(Frame):
 
     def get_printout(self) -> Printout | None:
         return self._print.get_printout()
+
+    def yview(self, *args):
+        self._print.yview(*args)
+        self._text.yview(*args)
 
     def scroll(self, event: Event):
         self._print.scroll(event)
@@ -132,7 +137,9 @@ class PrintDisplay(Frame):
 
     def set_scrollbar(self, scrollbar: Scrollbar) -> None:
         self._canvas.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=self._canvas.yview)
+
+    def yview(self, *args) -> None:
+        self._canvas.yview(*args)
 
     def scroll(self, event: Event):
         self._canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")  # For windows
@@ -190,7 +197,9 @@ class TextDisplay(Frame):
 
     def set_scrollbar(self, scrollbar: Scrollbar) -> None:
         self._text_box.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=self._text_box.yview)
+
+    def yview(self, *args) -> None:
+        self._text_box.yview(*args)
 
     def scroll(self, event: Event):
         self._text_box.yview_scroll(int(-1 * (event.delta / 120)), "units")
