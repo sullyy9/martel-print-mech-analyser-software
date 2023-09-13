@@ -81,14 +81,18 @@ class Display(Frame):
         if len(lines) < 2:
             return
 
-        matches = [parse.parse_line(line, self._fonts) for line in lines[:-1]]
-        self._print_unprocessed = Printout(lines[-1])
+        for line in lines[:-1]:
+            chars = parse.split_line_characters(line, self._fonts[0])
+            for char in chars:
+                matches = parse.parse_char(char, self._fonts)
+                if matches:
+                    self._text.append_character(matches, 16)
+                else:
+                    self._text.append_unknown(16)
 
-        for line in matches:
-            for char in line:
-                if char is not None:
-                    self._text.append_character(char, 16)
             self._text.new_line()
+
+        self._print_unprocessed = Printout(lines[-1])
 
 
 class PrintDisplay(Frame):
@@ -149,7 +153,7 @@ class TextDisplay(Frame):
     def __init__(self, master=None, **kw):
         super().__init__(master=master, **kw)
 
-        self._text: list[list[CharMatch]] = []
+        self._text: list[list[CharMatch] | None] = []
         self._text_box: Final = Text(self)
         self._tooltip: ToolTip = ToolTip(self, "")
 
@@ -163,7 +167,7 @@ class TextDisplay(Frame):
         tag: Final[str] = str(char_index)
         self._text.append(char)
 
-        self._text_box.insert(tkinter.END, self._text[-1][0].char, tag)
+        self._text_box.insert(tkinter.END, char[0].char, tag)
         self._text_box.tag_configure(tag, font=("Consolas", size))
 
         self._text_box.tag_bind(
@@ -171,6 +175,13 @@ class TextDisplay(Frame):
         )
 
         self._text_box.tag_bind(tag, "<Leave>", func=lambda _: self.hover_hide())
+
+    def append_unknown(self, size: int) -> None:
+        tag: Final[str] = str(len(self._text))
+        self._text.append(None)
+
+        self._text_box.insert(tkinter.END, "�", tag)
+        self._text_box.tag_configure(tag, font=("Consolas", int(size / 2)))
 
     def new_line(self) -> None:
         self._text_box.insert(tkinter.END, "\n")
@@ -180,10 +191,14 @@ class TextDisplay(Frame):
         self._text.clear()
 
     def hover_show(self, index: int) -> None:
-        match_count: int = 5 if len(self._text[index]) >= 5 else len(self._text[index])
+        hovered_text = self._text[index]
+        if hovered_text is None:
+            return
+
+        match_count: int = 5 if len(hovered_text) >= 5 else len(hovered_text)
 
         text: str = ""
-        for match in self._text[index][:match_count]:
+        for match in hovered_text[:match_count]:
             text += f"char: {match.char} | "
             text += f"code: U+{match.code_point:04X}  | "
             text += f"font: {match.font} | "
