@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import numpy as np
 from numpy import uint8
 from numpy.typing import NDArray
@@ -103,3 +105,95 @@ def parse_printout(
 ) -> list[list[list[CharMatch] | None]]:
     lines = split_lines(np.array(printout), fonts[0])
     return [parse_line(line, fonts) for line in lines]
+
+
+################################
+
+
+@dataclass
+class HorizontalSpace:
+    beg: int
+    end: int
+
+    @property
+    def len(self) -> int:
+        return self.end - self.beg
+
+
+@dataclass
+class WhiteSpace(HorizontalSpace):
+    pass
+
+
+@dataclass
+class UnknownSpace(HorizontalSpace):
+    pass
+
+
+# Contains possible matches.
+# beg & end may contradict the parent space.
+# Confirmed matches can be used to constrain the parent space.
+# Have position be part of the charmatch!
+@dataclass
+class CharSpace(HorizontalSpace):
+    matches: list[CharMatch]
+
+
+################################
+
+
+@dataclass
+class VerticalSpace:
+    beg: int
+    end: int
+
+    contents: list[HorizontalSpace]
+
+    @property
+    def len(self) -> int:
+        return self.end - self.beg
+
+
+################################
+
+
+def parse_space(printout: Printout) -> list[VerticalSpace]:
+    burned_rows: NDArray = np.any(printout, axis=1)
+
+    offsets = np.where(burned_rows[:-1] != burned_rows[1:])[0] + 1
+    offsets = np.insert(offsets, 0, 0)
+
+    vertical_spaces: list[VerticalSpace] = []
+    for i in range(0, len(offsets)):
+        beg: int = offsets[i]
+        end: int = offsets[i + 1] if (i + 1) < len(offsets) else printout.length
+
+        vertical_spaces.append(
+            VerticalSpace(
+                beg=beg,
+                end=end,
+                contents=parse_horizontal_space(printout[beg:end, :]),
+            )
+        )
+
+    return vertical_spaces
+
+
+def parse_horizontal_space(printout: Printout) -> list[HorizontalSpace]:
+    burned_cols: NDArray = np.any(printout, axis=0)
+
+    offsets = np.where(burned_cols[:-1] != burned_cols[1:])[0] + 1
+    offsets = np.insert(offsets, 0, 0)
+
+    chunks: list[HorizontalSpace] = []
+
+    for i in range(0, len(offsets)):
+        beg: int = offsets[i]
+        end: int = offsets[i + 1] if (i + 1) < len(offsets) else printout.width
+
+        if burned_cols[beg]:
+            chunks.append(UnknownSpace(beg, end))
+        else:
+            chunks.append(WhiteSpace(beg, end))
+
+    return chunks
