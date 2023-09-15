@@ -8,7 +8,6 @@ from serial import Serial
 from print_mech_analyser.analyser import MechAnalyser
 from print_mech_analyser.printout import Printout
 from print_mech_analyser.font import Font
-from print_mech_analyser import parse
 
 from print_mech_analyser.app.display import Display
 from print_mech_analyser.app.controls import Controls, PortMenu
