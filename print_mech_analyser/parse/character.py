@@ -7,7 +7,6 @@ import numpy as np
 from numpy import uint8
 from numpy.typing import NDArray
 
-import cvlog
 import cv2 as cv
 
 from print_mech_analyser.font import Font
@@ -46,8 +45,6 @@ def parse_image_character_bbox(
     ).clamp(image_bbox)
 
     character: Final[NDArray[uint8]] = image[bbox_padded.slice]
-
-    cvlog.image(cvlog.Level.INFO, character)
 
     # If image is whitespace whitespace.
     # TODO return list of possible whitespace chars instead.
