@@ -7,6 +7,9 @@ from numpy import uint8
 from numpy.typing import NDArray
 
 from print_mech_analyser.printout import Printout
+from print_mech_analyser.geometry import Span, BoundingBox
+
+Color: Final = tuple[int, int, int]
 
 
 class PrettyPrintout(np.lib.mixins.NDArrayOperatorsMixin):
@@ -64,33 +67,35 @@ class PrettyPrintout(np.lib.mixins.NDArrayOperatorsMixin):
     def size(self) -> tuple[int, int]:
         return (self._img.shape[0], self._img.shape[1])
 
-    def highlight_strip(self, beg: int, end: int, color: tuple[int, int, int]):
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self._img.shape
+
+    def highlight_strip(self, span: Span, color: tuple[int, int, int]) -> None:
         """
         Description
         -----------
         Highlight a horizontal strip in the printout.
 
         """
-        area: Final[NDArray[uint8]] = np.array(self[beg:end, :])
-        highlight: Final[NDArray[uint8]] = np.full(area.shape, color, dtype=uint8)
+        area: Final = np.array(self[span.slice, :])
+        highlight: Final = np.full(area.shape, color, dtype=uint8)
 
-        self._img[beg:end, :] = cv.addWeighted(area, 0.5, highlight, 0.5, 1.0)
+        self._img[span.slice, :] = cv.addWeighted(area, 0.5, highlight, 0.5, 1.0)
 
-    def highlight_area(
-        self, beg: tuple[int, int], end: tuple[int, int], color: tuple[int, int, int]
-    ):
+    def highlight_area(self, bounds: BoundingBox, color: Color) -> None:
         """
         Description
         -----------
         Highlight a rectangular area in the printout.
 
         """
-        area: Final[NDArray[uint8]] = np.array(self[beg[1] : end[1], beg[0] : end[0]])
-        highlight: Final[NDArray[uint8]] = np.full(area.shape, color, dtype=uint8)
+        area: Final = np.array(self[bounds.slice])
+        highlight: Final = np.full(area.shape, color, dtype=uint8)
 
         highlighted_area = cv.addWeighted(area, 0.5, highlight, 0.5, 1.0)
 
-        self._img[beg[1] : end[1], beg[0] : end[0]] = highlighted_area
+        self._img[bounds.slice] = highlighted_area
 
     def save(self, path: Path) -> None:
         cv.imwrite(str(path.absolute()), np.array(self))

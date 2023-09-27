@@ -1,7 +1,8 @@
+import time
+import tkinter
 from pathlib import Path
 from tkinter import Tk, Menu
 from tkinter import filedialog
-import tkinter
 from typing import Final
 from serial import Serial
 
@@ -112,7 +113,10 @@ class App:
         )
 
         if filename is not None and len(filename) > 0:
+            start: Final[float] = time.monotonic()
             self._display.set(Printout.from_file(Path(filename)))
+            end: Final[float] = time.monotonic()
+            print(f"Loaded printout in {end - start}s")
 
     def clear_printout(self) -> None:
         self._display.clear()

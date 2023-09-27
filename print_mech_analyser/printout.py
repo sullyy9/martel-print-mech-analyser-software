@@ -93,6 +93,10 @@ class Printout(np.lib.mixins.NDArrayOperatorsMixin):
     def size(self) -> tuple[int, int]:
         return (self._img.shape[0], self._img.shape[1])
 
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self._img.shape
+
     def save(self, path: Path) -> None:
         cv.imwrite(str(path.absolute()), np.array(self))
 

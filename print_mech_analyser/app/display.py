@@ -1,3 +1,4 @@
+from pathlib import Path
 import tkinter
 from tkinter import Canvas, PhotoImage, Frame, Scrollbar, Event, Text
 from typing import Final
@@ -7,17 +8,59 @@ import numpy as np
 from numpy import uint8
 from numpy.typing import NDArray
 
-from print_mech_analyser.font import CharMatch
 from print_mech_analyser.printout import Printout
+from print_mech_analyser.pretty_printout import PrettyPrintout
 from print_mech_analyser.font import Font
-from print_mech_analyser import parse
+from print_mech_analyser.parse import PrintoutDescriptor
+from print_mech_analyser.parse.character import CharMatch
+from print_mech_analyser.parse.parse import WhiteSpace, UnknownSpace, CharSpace
+from print_mech_analyser.geometry import BoundingBox, Point
+
+# Tkinter uses RGB, not BGR.
+BLUE = (0, 0, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
+TEAL = (0, 255, 255)
+
+SPACE_CHAR: Final = CharMatch(" ", "?", 0x20, 0, BoundingBox(Point(0, 0), Point(0, 0)))
+UNKNOWN: Final = CharMatch("�", "?", 0x20, 0, BoundingBox(Point(0, 0), Point(0, 0)))
 
 
 def ndarray_to_photo_image(array: NDArray[uint8]) -> PhotoImage:
-    height, width = array.shape
-    data = f"P5 {width} {height} 255 ".encode() + array.tobytes()
+    if len(array.shape) == 2:
+        height, width = array.shape
+        data = f"P5 {width} {height} 255 ".encode() + array.tobytes()
+    else:
+        height, width, _ = array.shape
+        data = f"P6 {width} {height} 255 ".encode() + array.tobytes()
 
     return PhotoImage(width=width, height=height, data=data, format="PPM")
+
+
+def color_printout(printout: Printout, desc: PrintoutDescriptor) -> PrettyPrintout:
+    pretty = PrettyPrintout.from_printout(printout)
+
+    vertspace = desc.contents
+    white_vertspace = [vs for vs in vertspace if vs.is_whitespace]
+    object_vertspace = [vs for vs in vertspace if (not vs.is_whitespace)]
+
+    [pretty.highlight_strip(vs.span, YELLOW) for vs in white_vertspace]
+
+    for vs in object_vertspace:
+        horispace = [(hs, vs.get_bbox(i)) for i, hs in enumerate(vs.contents)]
+
+        whitespace = [bbox for hs, bbox in horispace if type(hs) is WhiteSpace]
+        unknownspace = [bbox for hs, bbox in horispace if type(hs) is UnknownSpace]
+        charspace = [bbox for hs, bbox in horispace if type(hs) is CharSpace]
+
+        [pretty.highlight_area(bbox, TEAL) for bbox in whitespace]
+        [pretty.highlight_area(bbox, RED) for bbox in unknownspace]
+
+        [pretty.highlight_area(bbox, BLUE) for bbox in charspace[0::2]]
+        [pretty.highlight_area(bbox, GREEN) for bbox in charspace[1::2]]
+
+    return pretty
 
 
 class Display(Frame):
@@ -28,7 +71,7 @@ class Display(Frame):
         self._text = TextDisplay(self)
         self._scroll: Final = Scrollbar(self, orient="vertical", width=16)
 
-        self._print_unprocessed: Printout = Printout.blank(384, 0)
+        self._descriptor: PrintoutDescriptor | None = None
         self._fonts: list[Font] = []
 
         self._print.grid(row=0, column=0, sticky="nsew")
@@ -51,11 +94,48 @@ class Display(Frame):
         self._fonts = fonts
 
     def append(self, printout: Printout) -> None:
-        self._update(printout)
+        if self._descriptor is None:
+            self.set(printout)
+            return
+
+        self.clear()
+        self._descriptor.extend(printout)
+
+        pretty = color_printout(self._descriptor.printout, self._descriptor)
+        for vs in self._descriptor.contents:
+            for hs in vs.contents:
+                match hs:
+                    case WhiteSpace():
+                        self._text.append_character([SPACE_CHAR], 16)
+                    case CharSpace():
+                        self._text.append_character(hs.matches, 16)
+                    case UnknownSpace():
+                        self._text.append_character([UNKNOWN], 8)
+
+            self._text.new_line()
+
+        self._print.set(pretty)
 
     def set(self, printout: Printout) -> None:
         self.clear()
-        self._update(printout)
+        self._descriptor = PrintoutDescriptor.new(printout, self._fonts)
+
+        pretty = color_printout(printout, self._descriptor)
+        for vs in self._descriptor.contents:
+            for hs in vs.contents:
+                match hs:
+                    case WhiteSpace():
+                        self._text.append_character([SPACE_CHAR], 16)
+                    case CharSpace():
+                        self._text.append_character(hs.matches, 16)
+                    case UnknownSpace():
+                        self._text.append_character([UNKNOWN], 8)
+
+            self._text.new_line()
+
+        self._print.set(pretty)
+
+        pretty.save(Path("parsed.png"))
 
     def clear(self) -> None:
         self._print.clear()
@@ -71,28 +151,6 @@ class Display(Frame):
     def scroll(self, event: Event):
         self._print.scroll(event)
         self._text.scroll(event)
-
-    def _update(self, printout: Printout) -> None:
-        self._print.append(printout)
-
-        self._print_unprocessed.extend(printout)
-        lines = parse.split_lines(np.array(self._print_unprocessed), self._fonts[0])
-
-        if len(lines) < 2:
-            return
-
-        for line in lines[:-1]:
-            chars = parse.split_line_characters(line, self._fonts[0])
-            for char in chars:
-                matches = parse.parse_char(char, self._fonts)
-                if matches:
-                    self._text.append_character(matches, 16)
-                else:
-                    self._text.append_unknown(16)
-
-            self._text.new_line()
-
-        self._print_unprocessed = Printout(lines[-1])
 
 
 class PrintDisplay(Frame):
@@ -121,7 +179,7 @@ class PrintDisplay(Frame):
         self._canvas.itemconfig(self._canvas_image, image=self._photo_image)
         self._canvas.config(scrollregion=self._canvas.bbox("all"))
 
-    def set(self, printout: Printout) -> None:
+    def set(self, printout: Printout | PrettyPrintout) -> None:
         self._image = np.array(printout, dtype=uint8)
 
         self._photo_image = ndarray_to_photo_image(self._image)
