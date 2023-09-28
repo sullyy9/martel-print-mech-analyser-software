@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from typing import Final, Sequence
 from functools import partial
 

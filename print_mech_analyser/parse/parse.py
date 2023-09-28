@@ -17,13 +17,12 @@ from print_mech_analyser.geometry import BoundingBox, Point, Span
 class HorizontalSpace:
     span: Span
 
-    @property
-    def len(self) -> int:
-        return self.span.len
+    def __len__(self) -> int:
+        return len(self.span)
 
     @property
     def has_volume(self) -> bool:
-        return self.span.len > 0
+        return len(self.span) > 0
 
     @property
     def slice(self) -> slice:
@@ -63,9 +62,8 @@ class VerticalSpace:
     def __setitem__(self, index: SupportsIndex, value: HorizontalSpace) -> None:
         self.contents[index] = value
 
-    @property
-    def len(self) -> int:
-        return self.span.len
+    def __len__(self) -> int:
+        return len(self.span)
 
     @property
     def is_whitespace(self) -> bool:
@@ -73,7 +71,7 @@ class VerticalSpace:
 
     @property
     def has_volume(self) -> bool:
-        return self.span.len > 0
+        return len(self.span) > 0
 
     @property
     def slice(self) -> slice:
@@ -191,10 +189,7 @@ def parse_unknown(
             matches: list[CharMatch] = []
             for font in fonts:
                 # If the object is significantly bigger than a glyph, skip it.
-                if vert.span.len > (font.height * 1.5):
-                    continue
-
-                if hori.span.len > (font.width * 1.5):
+                if len(vert) > (font.height * 1.5) or len(hori) > (font.width * 1.5):
                     continue
 
                 matches.extend(

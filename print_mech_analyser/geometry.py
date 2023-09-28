@@ -20,8 +20,7 @@ class Span:
     beg: int
     end: int
 
-    @property
-    def len(self) -> int:
+    def __len__(self) -> int:
         return self.end - self.beg
 
     @property
