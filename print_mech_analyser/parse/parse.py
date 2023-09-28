@@ -22,7 +22,7 @@ class HorizontalSpace:
 
     @property
     def has_volume(self) -> bool:
-        return len(self.span) > 0
+        return self.span.end  > self.span.beg
 
     @property
     def slice(self) -> slice:
