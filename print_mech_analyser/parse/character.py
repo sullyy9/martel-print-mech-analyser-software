@@ -16,7 +16,7 @@ TEMPLATE_THRESHOLD: Final[float] = 100
 CONTOUR_THRESHOLD: Final[float] = 0.1
 
 
-@dataclass
+@dataclass(slots=True)
 class CharMatch:
     char: str
     font: str

@@ -13,7 +13,7 @@ from print_mech_analyser.geometry import BoundingBox, Point, Span
 ################################
 
 
-@dataclass
+@dataclass(slots=True)
 class HorizontalSpace:
     span: Span
 
@@ -35,12 +35,12 @@ class HorizontalSpace:
         }
 
 
-@dataclass
+@dataclass(slots=True)
 class WhiteSpace(HorizontalSpace):
     pass
 
 
-@dataclass
+@dataclass(slots=True)
 class UnknownSpace(HorizontalSpace):
     pass
 
@@ -49,7 +49,7 @@ class UnknownSpace(HorizontalSpace):
 # beg & end may contradict the parent space.
 # Confirmed matches can be used to constrain the parent space.
 # Have position be part of the charmatch!
-@dataclass
+@dataclass(slots=True)
 class CharSpace(HorizontalSpace):
     matches: list[CharMatch]
 
@@ -64,7 +64,7 @@ class CharSpace(HorizontalSpace):
 ################################
 
 
-@dataclass
+@dataclass(slots=True)
 class VerticalSpace:
     span: Span
     contents: list[HorizontalSpace]
@@ -113,7 +113,7 @@ class VerticalSpace:
 ################################
 
 
-@dataclass
+@dataclass(slots=True)
 class PrintoutDescriptor:
     printout: Printout
     contents: list[VerticalSpace]
