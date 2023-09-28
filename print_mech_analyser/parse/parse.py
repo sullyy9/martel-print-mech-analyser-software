@@ -28,6 +28,12 @@ class HorizontalSpace:
     def slice(self) -> slice:
         return self.span.slice
 
+    def as_dict(self) -> dict[str, int]:
+        return {
+            "beg": int(self.span.beg),
+            "end": int(self.span.end),
+        }
+
 
 @dataclass
 class WhiteSpace(HorizontalSpace):
@@ -46,6 +52,13 @@ class UnknownSpace(HorizontalSpace):
 @dataclass
 class CharSpace(HorizontalSpace):
     matches: list[CharMatch]
+
+    def as_dict(self) -> dict[str, int | list[dict]]:
+        return {
+            "beg": int(self.span.beg),
+            "end": int(self.span.end),
+            "matches": [match.as_dict() for match in self.matches],
+        }
 
 
 ################################
@@ -89,6 +102,13 @@ class VerticalSpace:
             Point(self.contents[index].span.end, self.span.end),
         )
 
+    def as_dict(self) -> dict[str, int | list[dict]]:
+        return {
+            "beg": int(self.span.beg),
+            "end": int(self.span.end),
+            "content": [hs.as_dict() for hs in self.contents],
+        }
+
 
 ################################
 
@@ -123,6 +143,9 @@ class PrintoutDescriptor:
         space = parse_unknown(self.printout, space, self.fonts)
         space = constrain(space)
         self.contents.extend(space)
+
+    def as_dict(self) -> dict[str, list[dict]]:
+        return {"fonts": [], "content": [vs.as_dict() for vs in self.contents]}
 
 
 ################################

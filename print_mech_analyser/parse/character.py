@@ -24,6 +24,14 @@ class CharMatch:
     match: float
     pos: BoundingBox
 
+    def as_dict(self) -> dict[str, str | int | float]:
+        return {
+            "char": self.char,
+            "font": self.font,
+            "code_point": self.code_point,
+            "score": self.match,
+        }
+
 
 def parse_image_character_bbox(
     image: NDArray[uint8], bbox: BoundingBox, font: Font
