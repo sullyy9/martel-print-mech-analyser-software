@@ -10,19 +10,20 @@ from numpy.typing import NDArray
 import cv2 as cv
 
 from print_mech_analyser.font import Font
-from print_mech_analyser.geometry import BoundingBox, Point
+from print_mech_analyser.geometry import Point
+from print_mech_analyser.geometry import BoundingBox as BBox
 
 TEMPLATE_THRESHOLD: Final[float] = 100
 CONTOUR_THRESHOLD: Final[float] = 0.1
 
 
 @dataclass(slots=True)
-class CharMatch:
+class GlyphMatch:
     char: str
     font: str
     code_point: int
     match: float
-    pos: BoundingBox
+    pos: BBox
 
     def as_dict(self) -> dict[str, str | int | float]:
         return {
@@ -33,9 +34,7 @@ class CharMatch:
         }
 
 
-def parse_image_character_bbox(
-    image: NDArray[uint8], bbox: BoundingBox, font: Font
-) -> list[CharMatch]:
+def from_image(image: NDArray[uint8], bbox: BBox, font: Font) -> list[GlyphMatch]:
     """
     Description
     -----------
@@ -46,8 +45,8 @@ def parse_image_character_bbox(
     xpad: Final[int] = font.width - bbox.width if bbox.width < font.width else 0
     ypad: Final[int] = font.height - bbox.height if bbox.height < font.height else 0
 
-    image_bbox: Final = BoundingBox(Point(0, 0), Point(image.shape[1], image.shape[0]))
-    bbox_padded: Final = BoundingBox(
+    image_bbox: Final = BBox(Point(0, 0), Point(image.shape[1], image.shape[0]))
+    bbox_padded: Final = BBox(
         bbox.p1 - Point(xpad, ypad),
         bbox.p2 + Point(xpad, ypad),
     ).clamp(image_bbox)
@@ -59,12 +58,12 @@ def parse_image_character_bbox(
     if not np.any(character):
         spaces = math.floor(image.shape[1] / font.width)
         return [
-            CharMatch(
+            GlyphMatch(
                 char="".join([" " for _ in range(spaces)]),
                 font=font.name,
                 code_point=0x20,
                 match=0.0,
-                pos=BoundingBox(Point(0, 0), Point(0, 0)),
+                pos=BBox(Point(0, 0), Point(0, 0)),
             )
         ]
 
@@ -95,7 +94,7 @@ def parse_image_character_bbox(
 
     ########
 
-    char_matches: list[CharMatch] = []
+    char_matches: list[GlyphMatch] = []
     for cp, _, _, match_cont, match_temp in matches:
         match_top_left: Point = Point(match_temp[1][0], match_temp[1][1])
         match_center: Point = Point(
@@ -122,12 +121,12 @@ def parse_image_character_bbox(
         p2 = match_center + corner_offset
 
         char_matches.append(
-            CharMatch(
+            GlyphMatch(
                 char=chr(cp),
                 font=font.name,
                 code_point=cp,
                 match=match_temp[0],
-                pos=BoundingBox(p1, p2).clamp(image_bbox),
+                pos=BBox(p1, p2).clamp(image_bbox),
             )
         )
 
@@ -143,6 +142,8 @@ def contour_similarity(contours1: Sequence, contours2: Sequence) -> float:
 
     """
 
+    return cv.matchShapes(contours1[0], contours2[0], cv.CONTOURS_MATCH_I1, 0.0)
+
     def match_contour(c1, c2) -> float:
         return cv.matchShapes(c1, c2, cv.CONTOURS_MATCH_I1, 0.0)
 
@@ -154,7 +155,7 @@ def contour_similarity(contours1: Sequence, contours2: Sequence) -> float:
 
 
 def template_similarity(
-    template: NDArray[uint8], image: NDArray[uint8]
+    image: NDArray[uint8], template: NDArray[uint8]
 ) -> tuple[float, tuple[int, int]]:
     result = cv.matchTemplate(image, template, cv.TM_SQDIFF)
     min, _, pos, _ = cv.minMaxLoc(result)

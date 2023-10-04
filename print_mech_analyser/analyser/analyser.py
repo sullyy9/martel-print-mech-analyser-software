@@ -45,7 +45,7 @@ class PrintoutBuilder:
         self._line: int = 0
 
 
-class MechAnalyser:
+class PrintMechAnalyser:
     def __init__(self, serial: Serial) -> None:
         self._serial: Final[Serial] = serial
         self._data: bytearray = bytearray()

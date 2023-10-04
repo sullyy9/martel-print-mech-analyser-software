@@ -4,7 +4,7 @@ from serial import Serial
 from dataclasses import dataclass
 from multiprocessing import Process, Queue
 
-from print_mech_analyser.analyser.analyser import MechAnalyser
+from print_mech_analyser.analyser.analyser import PrintMechAnalyser
 from print_mech_analyser.printout import Printout
 
 
@@ -24,7 +24,7 @@ class Request(Enum):
 
 
 @dataclass()
-class MechAnalyserServer:
+class PrintMechAnalyserServer:
     process: Process
 
     requests: Queue
@@ -78,7 +78,7 @@ class MechAnalyserServer:
 
     @staticmethod
     def _run(port: str, requests: Queue, printout: Queue) -> None:
-        analyser: Final = MechAnalyser(Serial(port, baudrate=230400))
+        analyser: Final = PrintMechAnalyser(Serial(port, baudrate=230400))
 
         while True:
             analyser.process()

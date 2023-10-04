@@ -12,8 +12,7 @@ from print_mech_analyser.printout import Printout
 from print_mech_analyser.pretty_printout import PrettyPrintout
 from print_mech_analyser.font import Font
 from print_mech_analyser.parse import PrintoutDescriptor
-from print_mech_analyser.parse.character import CharMatch
-from print_mech_analyser.parse.parse import WhiteSpace, UnknownSpace, CharSpace
+from print_mech_analyser.parse import WhiteSpace, UnknownSpace, GlyphSpace, GlyphMatch
 from print_mech_analyser.geometry import BoundingBox, Point
 
 # Tkinter uses RGB, not BGR.
@@ -23,8 +22,8 @@ RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 TEAL = (0, 255, 255)
 
-SPACE_CHAR: Final = CharMatch(" ", "?", 0x20, 0, BoundingBox(Point(0, 0), Point(0, 0)))
-UNKNOWN: Final = CharMatch("�", "?", 0x20, 0, BoundingBox(Point(0, 0), Point(0, 0)))
+SPACE_CHAR: Final = GlyphMatch(" ", "?", 0x20, 0, BoundingBox(Point(0, 0), Point(0, 0)))
+UNKNOWN: Final = GlyphMatch("�", "?", 0x20, 0, BoundingBox(Point(0, 0), Point(0, 0)))
 
 
 def ndarray_to_photo_image(array: NDArray[uint8]) -> PhotoImage:
@@ -52,7 +51,7 @@ def color_printout(printout: Printout, desc: PrintoutDescriptor) -> PrettyPrinto
 
         whitespace = [bbox for hs, bbox in horispace if type(hs) is WhiteSpace]
         unknownspace = [bbox for hs, bbox in horispace if type(hs) is UnknownSpace]
-        charspace = [bbox for hs, bbox in horispace if type(hs) is CharSpace]
+        charspace = [bbox for hs, bbox in horispace if type(hs) is GlyphSpace]
 
         [pretty.highlight_area(bbox, TEAL) for bbox in whitespace]
         [pretty.highlight_area(bbox, RED) for bbox in unknownspace]
@@ -107,7 +106,7 @@ class Display(Frame):
                 match hs:
                     case WhiteSpace():
                         self._text.append_character([SPACE_CHAR], 16)
-                    case CharSpace():
+                    case GlyphSpace():
                         self._text.append_character(hs.matches, 16)
                     case UnknownSpace():
                         self._text.append_character([UNKNOWN], 8)
@@ -126,7 +125,7 @@ class Display(Frame):
                 match hs:
                     case WhiteSpace():
                         self._text.append_character([SPACE_CHAR], 16)
-                    case CharSpace():
+                    case GlyphSpace():
                         self._text.append_character(hs.matches, 16)
                     case UnknownSpace():
                         self._text.append_character([UNKNOWN], 8)
@@ -211,7 +210,7 @@ class TextDisplay(Frame):
     def __init__(self, master=None, **kw):
         super().__init__(master=master, **kw)
 
-        self._text: list[list[CharMatch] | None] = []
+        self._text: list[list[GlyphMatch] | None] = []
         self._text_box: Final = Text(self)
         self._tooltip: ToolTip = ToolTip(self, "")
 
@@ -220,7 +219,7 @@ class TextDisplay(Frame):
 
         self._text_box.grid(row=0, column=0, sticky="nsew")
 
-    def append_character(self, char: list[CharMatch], size: int) -> None:
+    def append_character(self, char: list[GlyphMatch], size: int) -> None:
         char_index: Final[int] = len(self._text)
         tag: Final[str] = str(char_index)
         self._text.append(char)

@@ -1,2 +1,2 @@
-from print_mech_analyser.analyser.analyser import MechAnalyser
-from print_mech_analyser.analyser.server import MechAnalyserServer
+from print_mech_analyser.analyser.analyser import PrintMechAnalyser
+from print_mech_analyser.analyser.server import PrintMechAnalyserServer

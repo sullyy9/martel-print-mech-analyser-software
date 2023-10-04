@@ -6,7 +6,7 @@ from tkinter import filedialog
 from typing import Final
 from serial import Serial
 
-from print_mech_analyser.analyser import MechAnalyserServer
+from print_mech_analyser.analyser import PrintMechAnalyserServer
 from print_mech_analyser.printout import Printout
 from print_mech_analyser.font import Font
 
@@ -25,7 +25,7 @@ class App:
             self._root, borderwidth=5, relief=tkinter.GROOVE
         )
 
-        self._analyser: MechAnalyserServer | None = None
+        self._analyser: PrintMechAnalyserServer | None = None
 
         self._root.title("Print Mech Analyser")
 
@@ -89,7 +89,7 @@ class App:
             self._analyser.stop()
 
     def select_analyser(self, port: str) -> None:
-        self._analyser = MechAnalyserServer.start(Serial(port, baudrate=230400))
+        self._analyser = PrintMechAnalyserServer.start(Serial(port, baudrate=230400))
 
     def update_printout(self) -> None:
         self._root.after(self._REFRESH_RATE, self.update_printout)
